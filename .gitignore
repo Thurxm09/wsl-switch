@@ -1,0 +1,19 @@
+# Fichiers runtime - utiles en local, exclus du repo
+data/history.json
+data/wslconfig.backup
+data/monitor_cooldown.txt
+data/monitor_errors.txt
+data/reports/
+
+# Bootstraps de deploiement - utiles en local, exclus du repo
+Write-Phase2.ps1
+Write-Phase3.ps1
+Write-WslSwitch.ps1
+
+# Fichiers systeme
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# VSCode
+.vscode/*.log
