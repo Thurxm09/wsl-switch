@@ -114,7 +114,7 @@ function Get-RamBar {
     param([int]$Pct)
     $filled = [math]::Round($Pct / 10)
     $empty  = 10 - $filled
-    return ($C_FULL * $filled) + ($C_LIGHT * $empty)
+    return ([string]$C_FULL * $filled) + ([string]$C_LIGHT * $empty)
 }
 
 function Show-Header {
@@ -336,6 +336,7 @@ do {
     }
 
 } while ($true)
+
 
 
 
