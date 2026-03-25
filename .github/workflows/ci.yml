@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  validate:
+    name: Lint & Validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check PowerShell syntax
+        shell: pwsh
+        run: |
+          $script:failed = $false
+          Get-ChildItem -Recurse -Filter "*.ps1" | ForEach-Object {
+            $tokens = $null
+            $parseErrors = $null
+            $null = [System.Management.Automation.Language.Parser]::ParseFile(
+              $_.FullName, [ref]$tokens, [ref]$parseErrors
+            )
+            if ($parseErrors.Count -gt 0) {
+              $parseErrors | ForEach-Object {
+                Write-Host "::error file=$($_.Extent.File),line=$($_.Extent.StartLineNumber)::$($_.Message)"
+              }
+              $script:failed = $true
+            }
+          }
+          if ($script:failed) { exit 1 }
+          Write-Host "All PowerShell files are syntactically valid."
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: Install-Module -Name PSScriptAnalyzer -Force -Scope CurrentUser -Repository PSGallery
+
+      - name: Run PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error
+          if ($results.Count -gt 0) {
+            $results | ForEach-Object {
+              Write-Host "::error file=$($_.ScriptPath),line=$($_.Line)::[$($_.RuleName)] $($_.Message)"
+            }
+            exit 1
+          }
+          Write-Host "PSScriptAnalyzer: no errors found."
+
+      - name: Validate profiles.json
+        shell: pwsh
+        run: |
+          $json = Get-Content data/profiles.json -Raw | ConvertFrom-Json
+          if ($null -eq $json.profiles) { throw "profiles.json: missing 'profiles' key" }
+          if ($null -eq $json.version)  { throw "profiles.json: missing 'version' key" }
+          Write-Host "profiles.json is valid (version $($json.version), $(@($json.profiles.PSObject.Properties).Count) profile(s))."
