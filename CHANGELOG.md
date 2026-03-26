@@ -1,6 +1,6 @@
 # WSL2 Profile Switcher - Changelog
 
-## v2.0 - 2026-03-18
+## v2.0.0 - 2026-03-18
 
 ### Architecture
 - Refactoring complet : script monolithique -> structure modulaire 5 fichiers

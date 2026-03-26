@@ -16,17 +16,39 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Extract changelog section
+        id: changelog
+        run: |
+          TAG="${{ github.ref_name }}"
+          NOTES=$(awk "/^## ${TAG} /{found=1; next} found && /^## /{exit} found{print}" CHANGELOG.md)
+          if [ -z "$(echo "$NOTES" | tr -d '[:space:]')" ]; then
+            NOTES="See [CHANGELOG.md](CHANGELOG.md) for details."
+          fi
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create release archive
+        run: |
+          zip -r "wsl-switch-${{ github.ref_name }}.zip" \
+            wsl-switch.ps1 \
+            data/profiles.json \
+            modules/ \
+            VERSION \
+            CHANGELOG.md \
+            README.md
+
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ github.ref_name }}" \
             --title "WSL2 Profile Switcher ${{ github.ref_name }}" \
-            --generate-notes \
-            wsl-switch.ps1 \
-            data/profiles.json \
-            modules/ProfileManager.ps1 \
-            modules/Logger.ps1 \
-            modules/Monitor.ps1 \
-            modules/MonitorTask.ps1 \
-            modules/WeeklyReport.ps1
+            --notes "${{ steps.changelog.outputs.notes }}" \
+            "wsl-switch-${{ github.ref_name }}.zip"
