@@ -1,79 +1,239 @@
 # WSL2 Profile Switcher
 
-> Gestionnaire de profils WSL2 avec menu interactif, surveillance RAM et reporting hebdomadaire.
+> Gérez vos ressources WSL2 en un instant — profils mémoire, surveillance RAM en arrière-plan et rapports hebdomadaires, le tout depuis un menu interactif ou une seule commande.
 
-![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-blue)
-![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey)
+![Version](https://img.shields.io/badge/version-2.0-blue)
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)
+![WSL](https://img.shields.io/badge/WSL-2-orange?logo=linux&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green)
+
+---
+
+## Table des matières
+
+1. [Pourquoi ce projet ?](#pourquoi-ce-projet-)
+2. [Fonctionnalités](#fonctionnalités)
+3. [Prérequis](#prérequis)
+4. [Installation](#installation)
+5. [Démarrage rapide](#démarrage-rapide)
+6. [Référence des commandes](#référence-des-commandes)
+7. [Profils par défaut](#profils-par-défaut)
+8. [Profils personnalisés](#profils-personnalisés)
+9. [Surveillance RAM](#surveillance-ram)
+10. [Rapports hebdomadaires](#rapports-hebdomadaires)
+11. [Import / Export](#import--export)
+12. [Architecture](#architecture)
+13. [Configuration avancée](#configuration-avancée)
+14. [Licence](#licence)
 
 ---
 
 ## Pourquoi ce projet ?
 
-Sur une machine de 16 Go, laisser WSL2 consommer 6 Go en permanence pour un travail
-de navigation web n'a aucun sens. Ce projet permet de basculer instantanement entre
-des profils memoire adaptes a chaque usage, avec une interface claire et sans jamais
-editer .wslconfig a la main.
+Sur une machine de 16 Go de RAM, laisser WSL2 consommer 6 Go en permanence pour de la navigation web ou du travail léger est inutile et pénalisant. **WSL2 Profile Switcher** permet de basculer instantanément entre des profils mémoire adaptés à chaque usage, sans jamais éditer `.wslconfig` à la main.
+
+- ✅ Changement de profil en une commande ou via un menu interactif
+- ✅ Sauvegarde automatique et rollback instantané à chaque opération
+- ✅ Surveillance RAM WSL2 en arrière-plan avec alertes natives Windows
+- ✅ Rapports d'utilisation hebdomadaires générés automatiquement
+- ✅ Entièrement extensible via un fichier JSON — aucune modification du code requise
 
 ---
 
-## Fonctionnalites
+## Fonctionnalités
 
-- **Menu interactif** navigation clavier - aucun flag a memoriser
-- **Profils JSON** extensibles sans toucher au code
-- **Backup automatique** avant chaque switch + rollback instantane
-- **Surveillance RAM** en arriere-plan via tache planifiee Windows
-- **Alertes Toast** natives quand WSL2 depasse le seuil configure
-- **Rapport hebdomadaire** automatique chaque lundi
-- **Historique** complet de toutes les operations
-- **Mode dry-run** pour simuler sans appliquer
-- **Alias global** wsl-switch disponible partout dans le terminal
+| Fonctionnalité | Description |
+|---|---|
+| **Menu interactif** | Navigation au clavier (flèches + Entrée) — aucun flag à mémoriser |
+| **Profils JSON** | Définis dans `data/profiles.json`, modifiables sans toucher au code |
+| **Backup automatique** | `.wslconfig` sauvegardé avant chaque switch |
+| **Rollback instantané** | Restauration en une commande si quelque chose tourne mal |
+| **Validation post-écriture** | Rollback automatique si `.wslconfig` est invalide après écriture |
+| **Mode dry-run** | Simule un switch sans aucune écriture système |
+| **Surveillance RAM** | Tâche planifiée Windows — fonctionne sans terminal ouvert |
+| **Alertes Toast** | Notifications Windows natives quand WSL2 dépasse le seuil configuré |
+| **Rapports hebdomadaires** | Générés automatiquement chaque lundi à 09h00 |
+| **Historique complet** | Toutes les opérations tracées dans `data/history.json` |
+| **Profils personnalisés** | Création de nouveaux profils depuis la CLI |
+| **Import / Export** | Partage et sauvegarde des profils en JSON |
+| **Alias global** | `wsl-switch` disponible partout dans le terminal PowerShell |
+| **Nettoyage intégré** | Purge des fichiers temporaires et anciens rapports |
+
+---
+
+## Prérequis
+
+- **Windows 10** (build 19041+) ou **Windows 11**
+- **WSL2** installé et configuré (`wsl --install`)
+- **PowerShell 5.1** ou supérieur (inclus dans Windows)
+- Droits d'exécution de scripts PowerShell pour l'utilisateur courant
+- **Droits administrateur** requis pour la commande `Set-ExecutionPolicy` (étape 2 de l'installation) ; dans un environnement d'entreprise, cette politique peut déjà être définie par votre DSI
 
 ---
 
 ## Installation
 
 ```powershell
-# 1. Cloner le depot
-git clone https://github.com/<votre-username>/wsl-switch.git C:\Scripts\WSL-Switch
+# 1. Cloner le dépôt
+git clone https://github.com/Thurxm09/wsl-switch.git C:\Scripts\WSL-Switch
 
-# 2. Autoriser l'execution des scripts locaux
+# 2. Autoriser l'exécution des scripts locaux (si ce n'est pas déjà fait)
 Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
 
-# 3. Debloquer les fichiers
+# 3. Débloquer les fichiers téléchargés
 Get-ChildItem C:\Scripts\WSL-Switch -Recurse -Filter *.ps1 | Unblock-File
 
-# 4. Ajouter l'alias global (optionnel mais recommande)
-Add-Content -Path $PROFILE -Value "`nfunction wsl-switch { & 'C:\Scripts\WSL-Switch\wsl-switch.ps1' @args }" -Encoding ASCII
+# 4. (Recommandé) Ajouter un alias global dans votre profil PowerShell
+Add-Content -Path $PROFILE `
+  -Value "`nfunction wsl-switch { & 'C:\Scripts\WSL-Switch\wsl-switch.ps1' @args }" `
+  -Encoding ASCII
 . $PROFILE
 ```
 
----
-
-## Profils par defaut
-
-| Cle    | RAM  | CPU | Usage typique              |
-|--------|------|-----|----------------------------|
-| base   | 1 GB | 2   | Navigation, taches legeres |
-| web    | 2 GB | 3   | VS Code + Brave            |
-| data   | 6 GB | 5   | Jupyter + Pandas + ML      |
+> **Note :** L'étape 4 vous permet d'appeler `wsl-switch` depuis n'importe quel répertoire sans naviguer jusqu'au dossier d'installation.
 
 ---
 
-## Usage
+## Démarrage rapide
 
 ```powershell
-wsl-switch                                      # Menu interactif
-wsl-switch web                                  # Switch direct
-wsl-switch data -DryRun                         # Simulation sans ecriture
-wsl-switch -Rollback                            # Restaurer le backup
-wsl-switch -History                             # Voir l historique
-wsl-switch -Monitor start                       # Lancer la surveillance RAM
-wsl-switch -Monitor status                      # Etat du monitoring
-wsl-switch -Report                              # Generer un rapport maintenant
-wsl-switch -Clean                               # Purger les fichiers temporaires
-wsl-switch -NewProfile "perf 10GB 5 Perf"      # Profil personnalise
+# Ouvrir le menu interactif (recommandé pour débuter)
+wsl-switch
+
+# Basculer directement vers un profil
+wsl-switch web
+
+# Simuler un switch sans rien écrire
+wsl-switch data -DryRun
 ```
+
+---
+
+## Référence des commandes
+
+```powershell
+# ── Navigation ─────────────────────────────────────────────────────────
+wsl-switch                          # Menu interactif (flèches + Entrée)
+wsl-switch <profil>                 # Switch direct vers un profil
+wsl-switch <profil> -DryRun         # Simulation sans écriture
+
+# ── Récupération ───────────────────────────────────────────────────────
+wsl-switch -Rollback                # Restaurer le backup précédent
+wsl-switch -History                 # Afficher l'historique des opérations
+
+# ── Surveillance RAM ────────────────────────────────────────────────────
+wsl-switch -Monitor start           # Démarrer la surveillance en arrière-plan
+wsl-switch -Monitor stop            # Arrêter la surveillance
+wsl-switch -Monitor status          # Vérifier l'état du monitoring
+
+# ── Reporting ───────────────────────────────────────────────────────────
+wsl-switch -Report                  # Générer un rapport d'utilisation maintenant
+
+# ── Gestion des profils ─────────────────────────────────────────────────
+wsl-switch -NewProfile "clé RAMgo NbCPU [description]"
+                                    # Créer un profil personnalisé
+wsl-switch -Export                  # Exporter les profils vers un fichier JSON
+wsl-switch -Import chemin.json      # Importer des profils depuis un fichier JSON
+
+# ── Maintenance ─────────────────────────────────────────────────────────
+wsl-switch -Clean                   # Purger les fichiers temporaires et anciens rapports
+```
+
+---
+
+## Profils par défaut
+
+| Clé    | Nom affiché   | RAM   | CPU | Swap | Usage typique                    |
+|--------|---------------|-------|-----|------|----------------------------------|
+| `base` | BASE          | 1 GB  | 2   | 1 GB | Mode minimal, conservation RAM   |
+| `web`  | WEB           | 2 GB  | 3   | 3 GB | VS Code + Brave + WSL léger      |
+| `data` | DATA SCIENCE  | 6 GB  | 5   | 2 GB | Jupyter + Pandas + ML            |
+
+Tous les profils sont définis dans [`data/profiles.json`](data/profiles.json) et peuvent être modifiés ou étendus librement.
+
+---
+
+## Profils personnalisés
+
+Créez un nouveau profil directement depuis la CLI :
+
+```powershell
+# Syntaxe : wsl-switch -NewProfile "clé RAMgo NbCPU [description]"
+wsl-switch -NewProfile "gaming 12GB 6 Mode gaming haute performance"
+```
+
+- La clé doit être un mot unique (minuscules recommandées)
+- La RAM doit suivre le format `<nombre>GB` (ex : `4GB`, `8GB`)
+- Le nombre de CPU doit être compris entre 1 et 8
+- La description est optionnelle
+
+Le profil est immédiatement disponible dans le menu interactif et dans la liste des commandes directes.
+
+---
+
+## Surveillance RAM
+
+WSL2 Profile Switcher inclut un système de monitoring RAM qui s'exécute en arrière-plan via le Planificateur de tâches Windows, sans nécessiter de terminal ouvert.
+
+```powershell
+# Démarrer le monitoring
+wsl-switch -Monitor start
+
+# Vérifier l'état
+wsl-switch -Monitor status
+
+# Arrêter le monitoring
+wsl-switch -Monitor stop
+```
+
+**Comportement :**
+- Vérifie l'utilisation RAM de WSL2 (via le processus `vmmem`) toutes les 30 secondes
+- Envoie une alerte Toast Windows native si la consommation dépasse le seuil configuré (80 % par défaut)
+- Système de cooldown intégré : 30 minutes minimum entre deux alertes successives
+
+Le seuil et l'intervalle de vérification sont configurables dans `data/profiles.json` (clé `settings`).
+
+---
+
+## Rapports hebdomadaires
+
+Un rapport d'utilisation est généré automatiquement chaque lundi à 09h00 **heure locale du système** (via le Planificateur de tâches Windows, activé au démarrage du monitoring).
+
+```powershell
+# Générer un rapport manuellement
+wsl-switch -Report
+```
+
+**Contenu du rapport :**
+- Répartition du temps par profil
+- Profil dominant de la semaine
+- Heure de pointe d'utilisation
+- Liste des derniers switchs effectués
+
+Les rapports sont sauvegardés dans `data/reports/report_YYYY-MM-DD.txt`. Un maximum de 12 rapports est conservé (rotation automatique). Pour nettoyer manuellement :
+
+```powershell
+wsl-switch -Clean
+```
+
+---
+
+## Import / Export
+
+Partagez ou sauvegardez vos profils en dehors du dépôt :
+
+```powershell
+# Exporter vers un fichier (par défaut : wsl-profiles-export.json)
+wsl-switch -Export
+
+# Importer depuis un fichier
+wsl-switch -Import C:\Backup\mes-profils.json
+```
+
+L'importation crée automatiquement un backup du `.wslconfig` courant avant d'appliquer les nouveaux profils.
+
+> **Attention :** L'importation **remplace entièrement** le fichier `data/profiles.json` existant, y compris les profils personnalisés créés localement. Exportez vos profils actuels avant d'importer un nouveau fichier si vous souhaitez les conserver.
 
 ---
 
@@ -81,34 +241,60 @@ wsl-switch -NewProfile "perf 10GB 5 Perf"      # Profil personnalise
 
 ```
 WSL-Switch/
-|-- wsl-switch.ps1              <- Point d entree unique
-|-- modules/
-|   |-- ProfileManager.ps1      <- Logique profils (apply, backup, rollback)
-|   |-- Logger.ps1              <- Historique JSON + rapport hebdo
-|   |-- Monitor.ps1             <- Controle de la tache planifiee
-|   |-- MonitorTask.ps1         <- Script execute par le scheduler
-|   `-- WeeklyReport.ps1        <- Generation des rapports
-`-- data/
-    |-- profiles.json           <- Definition des profils (source of truth)
-    |-- history.json            <- Genere automatiquement (hors repo)
-    `-- reports/                <- Rapports hebdomadaires (hors repo)
+├── wsl-switch.ps1              ← Point d'entrée unique
+├── modules/
+│   ├── ProfileManager.ps1      ← Logique profils (apply, backup, rollback, import/export)
+│   ├── Logger.ps1              ← Historique JSON
+│   ├── Monitor.ps1             ← Contrôle de la tâche planifiée Windows
+│   ├── MonitorTask.ps1         ← Script exécuté par le Planificateur de tâches
+│   └── WeeklyReport.ps1        ← Génération des rapports hebdomadaires
+└── data/
+    ├── profiles.json           ← Définition des profils (source de vérité)
+    ├── history.json            ← Généré automatiquement (non versionné)
+    └── reports/                ← Rapports hebdomadaires (non versionnés)
 ```
 
-**Principe cle** : wsl-switch.ps1 est le seul point d entree.
-Les modules ne se connaissent pas entre eux.
+**Principe clé :** `wsl-switch.ps1` est le seul point d'entrée. Les modules ne se connaissent pas entre eux — toute orchestration passe par le script principal.
 
 ---
 
-## Ajouter un profil personnalise
+## Configuration avancée
 
-```powershell
-wsl-switch -NewProfile "gaming 12GB 6 Mode gaming"
+Le fichier `data/profiles.json` centralise l'ensemble de la configuration :
+
+```json
+{
+  "version": "2.0",
+  "profiles": {
+    "web": {
+      "displayName": "WEB",
+      "description": "Brave + VS Code + WSL léger",
+      "color": "Green",
+      "memory": "2GB",
+      "processors": 3,
+      "swap": "3GB",
+      "swapFile": "C:/Temp/wsl-swap.vhdx",
+      "swappiness": 10
+    }
+  },
+  "settings": {
+    "monitorThreshold": 80,
+    "monitorIntervalSeconds": 30,
+    "historyMaxEntries": 100,
+    "backupEnabled": true
+  }
+}
 ```
 
-Le profil apparait immediatement dans le menu interactif.
+| Paramètre `settings`      | Description                                           | Défaut |
+|---------------------------|-------------------------------------------------------|--------|
+| `monitorThreshold`        | Seuil RAM (%) déclenchant une alerte Toast            | `80`   |
+| `monitorIntervalSeconds`  | Intervalle de vérification RAM (secondes)             | `30`   |
+| `historyMaxEntries`       | Nombre maximum d'entrées dans l'historique            | `100`  |
+| `backupEnabled`           | Active la sauvegarde automatique de `.wslconfig`      | `true` |
 
 ---
 
 ## Licence
 
-MIT - voir [LICENSE](LICENSE)
+Distribué sous licence MIT. Voir [LICENSE](LICENSE) pour le texte complet.
