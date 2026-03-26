@@ -27,7 +27,8 @@ param(
     [string]$NewProfile = "",
     [string]$Monitor    = "",
     [switch]$Report,
-    [switch]$Clean
+    [switch]$Clean,
+    [switch]$Version
 )
 
 # ---- Bootstrap ------------------------------------------------------
@@ -40,6 +41,14 @@ $Global:WSLRoot = $PSScriptRoot
 
 $dataDir = Join-Path $PSScriptRoot "data"
 if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir | Out-Null }
+
+function Get-AppVersion {
+    $versionFile = Join-Path $PSScriptRoot "VERSION"
+    if (Test-Path $versionFile) { return (Get-Content $versionFile -Raw).Trim() }
+    return "2.0.0"
+}
+
+$Global:AppVersion = Get-AppVersion
 
 # ---- Caracteres Unicode exprimes via [char] -------------------------
 # Aucun octet non-ASCII dans ce fichier source.
@@ -127,7 +136,7 @@ function Show-Header {
     Clear-Host
     Write-Host ""
     Write-Host $LINE_TOP -ForegroundColor Cyan
-    Write-Host (Make-BoxLine "    " "   WSL2 Profile Switcher  v2.0         ") -ForegroundColor Cyan
+    Write-Host (Make-BoxLine "    " "   WSL2 Profile Switcher  v$($Global:AppVersion)   ") -ForegroundColor Cyan
     Write-Host (Make-BoxLine "    " "   Thuram Dev Setup                    ") -ForegroundColor Cyan
     Write-Host $LINE_MID -ForegroundColor Cyan
 
@@ -231,6 +240,11 @@ function Show-InteractiveMenu {
 }
 
 # ---- Point d'entree -------------------------------------------------
+
+if ($Version) {
+    Write-Host "WSL2 Profile Switcher v$($Global:AppVersion)" -ForegroundColor Cyan
+    exit
+}
 
 if ($Monitor -ne "") {
     switch ($Monitor.ToLower()) {
