@@ -32,7 +32,6 @@ function Get-ProfileConfig {
         Write-Host ""
         Write-Host "  ERREUR : profiles.json est corrompu (JSON invalide)." -ForegroundColor Red
         Write-Host "  Detail : $_" -ForegroundColor Gray
-        Write-Host "  Conseil : restaurez depuis data\wslconfig.backup ou redeployez profiles.json." -ForegroundColor Gray
         Write-Host ""
         exit 1
     }
@@ -112,10 +111,21 @@ function Invoke-Rollback {
 }
 
 # ---- Generation & application ---------------------------------------
+# Note : swapFile utilise des slashes forward (C:/Temp/...)
+# WSL2 et Windows acceptent les deux formats dans .wslconfig
+# Cela evite le probleme d'echappement du backslash
 
 function ConvertTo-WslConfigContent {
     param([Parameter(Mandatory)][PSCustomObject]$Profile)
-    return "[wsl2]`r`nmemory=$($Profile.memory)`r`nprocessors=$($Profile.processors)`r`nswap=$($Profile.swap)`r`nswapFile=$($Profile.swapFile)`r`nkernelCommandLine=sysctl.vm.swappiness=$($Profile.swappiness)"
+    $swapFile = $Profile.swapFile
+    return @"
+[wsl2]
+memory=$($Profile.memory)
+processors=$($Profile.processors)
+swap=$($Profile.swap)
+swapFile=$swapFile
+kernelCommandLine=sysctl.vm.swappiness=$($Profile.swappiness)
+"@
 }
 
 function Set-WslProfile {
@@ -139,7 +149,7 @@ function Set-WslProfile {
         Write-Host "  CPU     : $($profile.processors)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  Contenu .wslconfig simule :" -ForegroundColor DarkGray
-        $content -split "`r`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        $content -split "`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
         Write-Host ""
         return
     }
@@ -189,7 +199,7 @@ function New-CustomProfile {
         memory      = $Memory
         processors  = $Processors
         swap        = $Swap
-        swapFile    = "C:\\Temp\\wsl-swap.vhdx"
+        swapFile    = "C:/Temp/wsl-swap.vhdx"
         swappiness  = $Swappiness
     }
     $config.profiles | Add-Member -MemberType NoteProperty -Name $Key.ToLower() -Value $newProfile -Force

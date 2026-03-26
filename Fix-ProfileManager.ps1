@@ -1,141 +1,10 @@
-# ============================================================
-#  Fix-Bugs.ps1
-#  Corrige les 5 bugs identifies dans WSL-Switch v2.0
-#  Usage : .\Fix-Bugs.ps1
-# ============================================================
+# Fix-ProfileManager.ps1
+# Reecrit ProfileManager.ps1 entierement.
+# Corrige aussi le probleme swapFile via slashes forward.
+# Usage : .\Fix-ProfileManager.ps1
 
 $root = "C:\Scripts\WSL-Switch"
 
-Write-Host ""
-Write-Host "  WSL-Switch - Correction des bugs" -ForegroundColor Cyan
-Write-Host "  ----------------------------------------" -ForegroundColor DarkGray
-Write-Host ""
-
-# ============================================================
-#  BUG 1 : WeeklyReport.ps1 - rotation mal placee
-# ============================================================
-$weeklyReport = @'
-# WeeklyReport.ps1
-# Genere un rapport hebdomadaire depuis history.json.
-# Peut etre appele manuellement ou par tache planifiee.
-
-param([switch]$Silent)
-
-$historyPath = Join-Path $PSScriptRoot "..\data\history.json"
-$reportsDir  = Join-Path $PSScriptRoot "..\data\reports"
-
-if (-not (Test-Path $reportsDir)) {
-    New-Item -ItemType Directory -Path $reportsDir | Out-Null
-}
-
-if (-not (Test-Path $historyPath)) {
-    if (-not $Silent) { Write-Host "  Aucun historique disponible." -ForegroundColor Gray }
-    exit 0
-}
-
-$history = @(Get-Content $historyPath -Raw | ConvertFrom-Json)
-if ($history.Count -eq 0) {
-    if (-not $Silent) { Write-Host "  Historique vide." -ForegroundColor Gray }
-    exit 0
-}
-
-$weekAgo = (Get-Date).AddDays(-7)
-
-$switches = @($history | Where-Object {
-    $_.action -eq "SWITCH" -and
-    [datetime]::ParseExact($_.timestamp, "yyyy-MM-dd HH:mm:ss", $null) -ge $weekAgo
-})
-
-# ---- Construction du rapport ----------------------------------------
-
-$lines = @()
-$lines += "WSL2 Profile Switcher - Rapport hebdomadaire"
-$lines += "Genere le : $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
-$lines += "Periode   : $($weekAgo.ToString('yyyy-MM-dd')) -> $(Get-Date -Format 'yyyy-MM-dd')"
-$lines += "=" * 50
-
-if ($switches.Count -eq 0) {
-    $lines += ""
-    $lines += "Aucun switch enregistre cette semaine."
-    $lines += ""
-} else {
-    $lines += ""
-    $lines += "Repartition par profil :"
-    $lines += "-" * 30
-
-    $grouped  = $switches | Group-Object -Property profile | Sort-Object Count -Descending
-    $dominant = $grouped | Select-Object -First 1
-    $total    = $switches.Count
-
-    foreach ($g in $grouped) {
-        $pct = [math]::Round($g.Count / $total * 100, 0)
-        $bar = "#" * [math]::Round($pct / 5)
-        $lines += ("  " + $g.Name.PadRight(16) + $bar.PadRight(20) + " $($g.Count)x ($pct%)")
-    }
-
-    $lines += ""
-    $lines += "Profil dominant   : $($dominant.Name.ToUpper()) ($($dominant.Count) activations)"
-    $lines += "Total de switchs  : $total"
-
-    $byDay = $switches | Group-Object {
-        [datetime]::ParseExact($_.timestamp, "yyyy-MM-dd HH:mm:ss", $null).DayOfWeek
-    } | Sort-Object Count -Descending | Select-Object -First 1
-    if ($byDay) { $lines += "Jour le plus actif: $($byDay.Name) ($($byDay.Count) switchs)" }
-
-    $byHour = $switches | Group-Object {
-        [datetime]::ParseExact($_.timestamp, "yyyy-MM-dd HH:mm:ss", $null).Hour
-    } | Sort-Object Count -Descending | Select-Object -First 1
-    if ($byHour) { $lines += "Heure de pointe   : $($byHour.Name)h00 ($($byHour.Count) switchs)" }
-
-    $lines += ""
-    $lines += "-" * 30
-    $lines += ""
-    $lines += "Derniers switchs (5) :"
-    $switches | Select-Object -Last 5 | ForEach-Object {
-        $lines += ("  " + $_.timestamp + "  " + $_.profile.PadRight(14) + $_.details)
-    }
-}
-
-$cooldown = Join-Path $PSScriptRoot "..\data\monitor_cooldown.txt"
-if (Test-Path $cooldown) {
-    $lines += ""
-    $lines += "Derniere alerte RAM : $((Get-Content $cooldown -Raw).Trim())"
-}
-
-$errors = Join-Path $PSScriptRoot "..\data\monitor_errors.txt"
-if ((Test-Path $errors) -and (Get-Content $errors).Count -gt 0) {
-    $lines += "Erreurs Toast       : $((Get-Content $errors).Count) (voir data\monitor_errors.txt)"
-}
-
-$lines += ""
-$lines += "=" * 50
-$lines += "Fin du rapport."
-
-# ---- Ecriture + rotation (12 max) -----------------------------------
-
-$reportPath = Join-Path $reportsDir ("report_" + (Get-Date -Format "yyyy-MM-dd") + ".txt")
-$lines | Set-Content $reportPath -Encoding ASCII
-
-$allReports = Get-ChildItem $reportsDir -Filter "report_*.txt" | Sort-Object Name
-if ($allReports.Count -gt 12) {
-    $allReports | Select-Object -First ($allReports.Count - 12) | Remove-Item -Force
-}
-
-if (-not $Silent) {
-    Write-Host ""
-    Write-Host "  Rapport genere : $reportPath" -ForegroundColor Green
-    Write-Host ""
-    $lines | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
-    Write-Host ""
-}
-'@
-
-Set-Content "$root\modules\WeeklyReport.ps1" -Value $weeklyReport -Encoding ASCII
-Write-Host "  [FIX 1] WeeklyReport.ps1 - rotation corrigee" -ForegroundColor Green
-
-# ============================================================
-#  BUG 2 : ProfileManager.ps1 - reecrit proprement en ASCII
-# ============================================================
 $profileManager = @'
 # ============================================================
 #  ProfileManager.ps1 - Gestion des profils WSL2
@@ -171,7 +40,6 @@ function Get-ProfileConfig {
         Write-Host ""
         Write-Host "  ERREUR : profiles.json est corrompu (JSON invalide)." -ForegroundColor Red
         Write-Host "  Detail : $_" -ForegroundColor Gray
-        Write-Host "  Conseil : restaurez depuis data\wslconfig.backup ou redeployez profiles.json." -ForegroundColor Gray
         Write-Host ""
         exit 1
     }
@@ -251,10 +119,21 @@ function Invoke-Rollback {
 }
 
 # ---- Generation & application ---------------------------------------
+# Note : swapFile utilise des slashes forward (C:/Temp/...)
+# WSL2 et Windows acceptent les deux formats dans .wslconfig
+# Cela evite le probleme d'echappement du backslash
 
 function ConvertTo-WslConfigContent {
     param([Parameter(Mandatory)][PSCustomObject]$Profile)
-    return "[wsl2]`r`nmemory=$($Profile.memory)`r`nprocessors=$($Profile.processors)`r`nswap=$($Profile.swap)`r`nswapFile=$($Profile.swapFile)`r`nkernelCommandLine=sysctl.vm.swappiness=$($Profile.swappiness)"
+    $swapFile = $Profile.swapFile
+    return @"
+[wsl2]
+memory=$($Profile.memory)
+processors=$($Profile.processors)
+swap=$($Profile.swap)
+swapFile=$swapFile
+kernelCommandLine=sysctl.vm.swappiness=$($Profile.swappiness)
+"@
 }
 
 function Set-WslProfile {
@@ -278,7 +157,7 @@ function Set-WslProfile {
         Write-Host "  CPU     : $($profile.processors)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  Contenu .wslconfig simule :" -ForegroundColor DarkGray
-        $content -split "`r`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+        $content -split "`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
         Write-Host ""
         return
     }
@@ -328,7 +207,7 @@ function New-CustomProfile {
         memory      = $Memory
         processors  = $Processors
         swap        = $Swap
-        swapFile    = "C:\\Temp\\wsl-swap.vhdx"
+        swapFile    = "C:/Temp/wsl-swap.vhdx"
         swappiness  = $Swappiness
     }
     $config.profiles | Add-Member -MemberType NoteProperty -Name $Key.ToLower() -Value $newProfile -Force
@@ -356,35 +235,8 @@ function Import-Profiles {
 }
 '@
 
-Set-Content "$root\modules\ProfileManager.ps1" -Value $profileManager -Encoding ASCII
-Write-Host "  [FIX 2] ProfileManager.ps1 - reecrit en ASCII pur" -ForegroundColor Green
-
-# ============================================================
-#  BUG 3 : wsl-switch.ps1 - Get-RamBar [char]*[int]
-# ============================================================
-$switchPath = "$root\wsl-switch.ps1"
-$c = Get-Content $switchPath -Raw -Encoding ASCII
-$old = 'function Get-RamBar {
-    param([int]$Pct)
-    $filled = [math]::Round($Pct / 10)
-    $empty  = 10 - $filled
-    return ($C_FULL * $filled) + ($C_LIGHT * $empty)
-}'
-$new = 'function Get-RamBar {
-    param([int]$Pct)
-    $filled = [math]::Round($Pct / 10)
-    $empty  = 10 - $filled
-    return ([string]$C_FULL * $filled) + ([string]$C_LIGHT * $empty)
-}'
-$c = $c.Replace($old, $new)
-Set-Content $switchPath -Value $c -Encoding ASCII
-Write-Host "  [FIX 3] wsl-switch.ps1 - Get-RamBar corrige" -ForegroundColor Green
-
-# ============================================================
-#  BUG 4 : profiles.json - suppression du BOM UTF-8
-# ============================================================
-$jsonPath = "$root\data\profiles.json"
-$jsonContent = @'
+# Correction profiles.json : slashes forward pour swapFile
+$profilesJson = @'
 {
   "version": "2.0",
   "profiles": {
@@ -395,7 +247,7 @@ $jsonContent = @'
       "memory": "2GB",
       "processors": 3,
       "swap": "3GB",
-      "swapFile": "C:\\Temp\\wsl-swap.vhdx",
+      "swapFile": "C:/Temp/wsl-swap.vhdx",
       "swappiness": 10
     },
     "data": {
@@ -405,7 +257,7 @@ $jsonContent = @'
       "memory": "6GB",
       "processors": 5,
       "swap": "2GB",
-      "swapFile": "C:\\Temp\\wsl-swap.vhdx",
+      "swapFile": "C:/Temp/wsl-swap.vhdx",
       "swappiness": 10
     },
     "base": {
@@ -415,7 +267,7 @@ $jsonContent = @'
       "memory": "1GB",
       "processors": 2,
       "swap": "1GB",
-      "swapFile": "C:\\Temp\\wsl-swap.vhdx",
+      "swapFile": "C:/Temp/wsl-swap.vhdx",
       "swappiness": 20
     }
   },
@@ -427,29 +279,14 @@ $jsonContent = @'
   }
 }
 '@
-Set-Content $jsonPath -Value $jsonContent -Encoding ASCII
-Write-Host "  [FIX 4] profiles.json - BOM supprime" -ForegroundColor Green
 
-# ============================================================
-#  BUG 5 : data/.gitkeep manquant
-# ============================================================
-$gitkeepPath = "$root\data\.gitkeep"
-if (-not (Test-Path $gitkeepPath)) {
-    Set-Content $gitkeepPath -Value "" -Encoding ASCII
-    Write-Host "  [FIX 5] data/.gitkeep - cree" -ForegroundColor Green
-} else {
-    Write-Host "  [FIX 5] data/.gitkeep - deja present" -ForegroundColor DarkGray
-}
+Set-Content "$root\modules\ProfileManager.ps1" -Value $profileManager -Encoding ASCII
+Write-Host "  [OK] ProfileManager.ps1 reecrit." -ForegroundColor Green
 
-# ============================================================
-#  Bilan
-# ============================================================
+Set-Content "$root\data\profiles.json" -Value $profilesJson -Encoding ASCII
+Write-Host "  [OK] profiles.json - swapFile en slashes forward." -ForegroundColor Green
+
 Write-Host ""
-Write-Host "  ----------------------------------------" -ForegroundColor DarkGray
-Write-Host "  5 bugs corriges. Prochaine etape :" -ForegroundColor Green
-Write-Host ""
-Write-Host "  cd C:\Scripts\WSL-Switch" -ForegroundColor Gray
-Write-Host "  git add ." -ForegroundColor Gray
-Write-Host "  git commit -m 'fix: correction des 5 bugs identifies'" -ForegroundColor Gray
-Write-Host "  git push" -ForegroundColor Gray
+Write-Host "  Relance le menu pour verifier :" -ForegroundColor Gray
+Write-Host "  wsl-switch" -ForegroundColor Gray
 Write-Host ""
