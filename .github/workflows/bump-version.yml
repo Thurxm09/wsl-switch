@@ -52,15 +52,20 @@ jobs:
           NEW_VERSION="v${{ steps.new_version.outputs.version }}"
           DATE=$(date +%Y-%m-%d)
           ENTRY="${{ github.event.inputs.changelog_entry }}"
-          {
-            head -1 CHANGELOG.md
-            echo ""
-            echo "## ${NEW_VERSION} - ${DATE}"
-            echo ""
-            echo "${ENTRY}"
-            echo ""
-            tail -n +2 CHANGELOG.md
-          } > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
+          # Insert new section after the first line that starts with "# " (title)
+          awk -v ver="$NEW_VERSION" -v date="$DATE" -v entry="$ENTRY" '
+            /^# / && !inserted {
+              print
+              print ""
+              print "## " ver " - " date
+              print ""
+              print entry
+              print ""
+              inserted=1
+              next
+            }
+            { print }
+          ' CHANGELOG.md > CHANGELOG.tmp && mv CHANGELOG.tmp CHANGELOG.md
 
       - name: Commit and push
         run: |

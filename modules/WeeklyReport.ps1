@@ -97,7 +97,7 @@ $lines += "Fin du rapport."
 # ---- Ecriture + rotation (12 max) -----------------------------------
 
 $reportPath = Join-Path $reportsDir ("report_" + (Get-Date -Format "yyyy-MM-dd") + ".txt")
-$lines | Set-Content $reportPath -Encoding ASCII
+$lines | Set-Content $reportPath -Encoding UTF8
 
 $allReports = Get-ChildItem $reportsDir -Filter "report_*.txt" | Sort-Object Name
 if ($allReports.Count -gt 12) {

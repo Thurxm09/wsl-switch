@@ -1,6 +1,6 @@
 param([int]$ThresholdPct = 80, [int]$CooldownMin = 30)
 
-$scriptDir    = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir    = $PSScriptRoot
 $cooldownFile = Join-Path $scriptDir "..\data\monitor_cooldown.txt"
 
 $vmmem = Get-Process -Name "vmmem" -ErrorAction SilentlyContinue

@@ -157,7 +157,7 @@ function Show-Header {
 function Show-InteractiveMenu {
 
     $config      = Get-ProfileConfig
-    $active      = Get-ActiveProfile
+    $active      = Get-ActiveProfile -Config $config
     $profileKeys = $config.profiles.PSObject.Properties.Name
 
     $menuItems = [System.Collections.Generic.List[PSCustomObject]]::new()
@@ -298,6 +298,10 @@ if ($NewProfile -ne "") {
     $parts = $NewProfile -split "\s+"
     if ($parts.Count -lt 3) {
         Write-Host "Usage : -NewProfile 'nomCle XGBRAM NbCPU [description]'" -ForegroundColor Red
+        exit 1
+    }
+    if ($parts[0] -notmatch "^[a-zA-Z][a-zA-Z0-9_-]*$") {
+        Write-Host "  ERREUR : La cle de profil doit etre un identifiant alphanumerique (ex: gaming, ml-heavy)." -ForegroundColor Red
         exit 1
     }
     $desc = if ($parts.Count -ge 4) { $parts[3..($parts.Count-1)] -join " " } else { "Profil personnalise" }
