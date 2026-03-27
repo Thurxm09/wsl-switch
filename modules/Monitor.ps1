@@ -78,6 +78,14 @@ function Start-WslMonitor {
 }
 
 function Stop-WslMonitor {
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
+    [Security.Principal.WindowsBuiltinRole]::Administrator)
+    if (-not $isAdmin) {
+        Write-Host "  ERREUR : L'arret du monitoring requiert des droits administrateur." -ForegroundColor Red
+        Write-Host "  Relancez PowerShell en tant qu'Administrateur." -ForegroundColor Gray
+        return
+    }
+
     $existing = Get-ScheduledTask -TaskName $script:TASK_NAME -ErrorAction SilentlyContinue
     if (-not $existing) {
         Write-Host "  Le monitoring n'est pas actif." -ForegroundColor Gray
