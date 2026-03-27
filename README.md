@@ -299,4 +299,4 @@ Le fichier `data/profiles.json` centralise l'ensemble de la configuration :
 
 ## Licence
 
-Distribué sous licence MIT. Voir [LICENSE](LICENSE) pour le texte complet.
+Distribué sous licence GNU GENERAL PUBLIC v3.0. Voir [LICENSE](LICENSE) pour le texte complet.
