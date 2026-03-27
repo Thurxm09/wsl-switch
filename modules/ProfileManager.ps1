@@ -13,38 +13,25 @@ function Get-WslConfigPath { Join-Path $env:USERPROFILE ".wslconfig" }
 function Get-ProfileConfig {
     $path = Get-ProfilesPath
     if (-not (Test-Path $path)) {
-        Write-Host ""
-        Write-Host "  ERREUR : profiles.json introuvable." -ForegroundColor Red
-        Write-Host "  Chemin attendu : $path" -ForegroundColor Gray
-        Write-Host ""
-        exit 1
+        throw "profiles.json introuvable. Chemin attendu : $path"
     }
     $raw = Get-Content $path -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($raw)) {
-        Write-Host ""
-        Write-Host "  ERREUR : profiles.json est vide." -ForegroundColor Red
-        Write-Host ""
-        exit 1
+        throw "profiles.json est vide. Chemin : $path"
     }
     try {
         $parsed = $raw | ConvertFrom-Json
     } catch {
-        Write-Host ""
-        Write-Host "  ERREUR : profiles.json est corrompu (JSON invalide)." -ForegroundColor Red
-        Write-Host "  Detail : $_" -ForegroundColor Gray
-        Write-Host ""
-        exit 1
+        throw "profiles.json est corrompu (JSON invalide). Detail : $_"
     }
     if ($null -eq $parsed.profiles) {
-        Write-Host ""
-        Write-Host "  ERREUR : profiles.json incomplet - cle manquante : profiles" -ForegroundColor Red
-        Write-Host ""
-        exit 1
+        throw "profiles.json incomplet — cle manquante : 'profiles'"
     }
     return $parsed
 }
 
 function Get-ActiveProfile {
+    param([PSCustomObject]$Config = $null)
     $wslConfig = Get-WslConfigPath
     if (-not (Test-Path $wslConfig)) {
         return [PSCustomObject]@{ name = "Non configure"; key = ""; memory = "N/A"; processors = "?" }
@@ -53,8 +40,8 @@ function Get-ActiveProfile {
     $mem   = ($lines | Where-Object { $_ -match "^memory=" }     | Select-Object -First 1) -replace "memory=", ""
     $cpu   = ($lines | Where-Object { $_ -match "^processors=" } | Select-Object -First 1) -replace "processors=", ""
     try {
-        $config  = Get-ProfileConfig
-        $matched = $config.profiles.PSObject.Properties |
+        $cfg     = if ($null -ne $Config) { $Config } else { Get-ProfileConfig }
+        $matched = $cfg.profiles.PSObject.Properties |
                    Where-Object { $_.Value.memory -eq $mem } |
                    Select-Object -First 1
         return [PSCustomObject]@{
@@ -107,7 +94,7 @@ function Invoke-Rollback {
     $restored = Get-ActiveProfile
     Write-Host "  Profil restaure : $($restored.name) ($($restored.memory) / $($restored.processors) CPU)" -ForegroundColor Cyan
     Write-Host ""
-    Write-SwitchLog -Action "ROLLBACK" -Profile $restored.key -Details "Restaure depuis backup"
+    Write-SwitchLog -Action "ROLLBACK" -ProfileKey $restored.key -Details "Restaure depuis backup"
 }
 
 # ---- Generation & application ---------------------------------------
@@ -116,15 +103,15 @@ function Invoke-Rollback {
 # Cela evite le probleme d'echappement du backslash
 
 function ConvertTo-WslConfigContent {
-    param([Parameter(Mandatory)][PSCustomObject]$Profile)
-    $swapFile = $Profile.swapFile
+    param([Parameter(Mandatory)][PSCustomObject]$ProfileDef)
+    $swapFile = $ProfileDef.swapFile
     return @"
 [wsl2]
-memory=$($Profile.memory)
-processors=$($Profile.processors)
-swap=$($Profile.swap)
+memory=$($ProfileDef.memory)
+processors=$($ProfileDef.processors)
+swap=$($ProfileDef.swap)
 swapFile=$swapFile
-kernelCommandLine=sysctl.vm.swappiness=$($Profile.swappiness)
+kernelCommandLine=sysctl.vm.swappiness=$($ProfileDef.swappiness)
 "@
 }
 
@@ -138,15 +125,15 @@ function Set-WslProfile {
     if ($null -eq $prop) {
         throw "Profil '$Key' introuvable. Profils disponibles : $($config.profiles.PSObject.Properties.Name -join ', ')"
     }
-    $profile = $prop.Value
-    $content = ConvertTo-WslConfigContent -Profile $profile
+    $profileDef = $prop.Value
+    $content = ConvertTo-WslConfigContent -ProfileDef $profileDef
 
     if ($DryRun) {
         Write-Host ""
         Write-Host "  DRY-RUN - Simulation (aucune ecriture)" -ForegroundColor DarkYellow
-        Write-Host "  Profil  : $($profile.displayName)" -ForegroundColor Yellow
-        Write-Host "  Memoire : $($profile.memory)" -ForegroundColor Gray
-        Write-Host "  CPU     : $($profile.processors)" -ForegroundColor Gray
+        Write-Host "  Profil  : $($profileDef.displayName)" -ForegroundColor Yellow
+        Write-Host "  Memoire : $($profileDef.memory)" -ForegroundColor Gray
+        Write-Host "  CPU     : $($profileDef.processors)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  Contenu .wslconfig simule :" -ForegroundColor DarkGray
         $content -split "`n" | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
@@ -156,7 +143,7 @@ function Set-WslProfile {
 
     Backup-WslConfig
     Write-Host ""
-    Write-Host "  Activation du profil $($profile.displayName)..." -ForegroundColor $profile.color
+    Write-Host "  Activation du profil $($profileDef.displayName)..." -ForegroundColor $profileDef.color
     Write-Host "  Arret de WSL2..." -ForegroundColor Gray
     wsl --shutdown
     Start-Sleep -Seconds 2
@@ -168,10 +155,10 @@ function Set-WslProfile {
         return
     }
 
-    Write-Host "  OK - $($profile.displayName) actif - $($profile.memory) / $($profile.processors) CPU" -ForegroundColor Green
+    Write-Host "  OK - $($profileDef.displayName) actif - $($profileDef.memory) / $($profileDef.processors) CPU" -ForegroundColor Green
     Write-Host "  WSL2 demarrera avec ce profil au prochain lancement." -ForegroundColor DarkGray
     Write-Host ""
-    Write-SwitchLog -Action "SWITCH" -Profile $Key -Details "$($profile.memory), $($profile.processors) CPU"
+    Write-SwitchLog -Action "SWITCH" -ProfileKey $Key -Details "$($profileDef.memory), $($profileDef.processors) CPU"
 }
 
 # ---- Profils personnalises ------------------------------------------
@@ -188,8 +175,9 @@ function New-CustomProfile {
     if ($Memory -notmatch "^\d+GB$") {
         throw "Format memoire invalide : '$Memory'. Attendu : ex. 4GB, 8GB, 12GB"
     }
-    if ($Processors -lt 1 -or $Processors -gt 8) {
-        throw "Nombre de CPU invalide : $Processors. Attendu : entre 1 et 8"
+    $maxCpu = (Get-CimInstance Win32_ComputerSystem).NumberOfLogicalProcessors
+    if ($Processors -lt 1 -or $Processors -gt $maxCpu) {
+        throw "Nombre de CPU invalide : $Processors. Attendu : entre 1 et $maxCpu (processeurs logiques disponibles)."
     }
     $config     = Get-ProfileConfig
     $newProfile = [PSCustomObject]@{
@@ -205,7 +193,7 @@ function New-CustomProfile {
     $config.profiles | Add-Member -MemberType NoteProperty -Name $Key.ToLower() -Value $newProfile -Force
     $config | ConvertTo-Json -Depth 10 | Set-Content (Get-ProfilesPath) -Encoding UTF8
     Write-Host "  OK - Profil '$($Key.ToUpper())' cree ($Memory / $Processors CPU)." -ForegroundColor Green
-    Write-SwitchLog -Action "CUSTOM" -Profile $Key.ToLower() -Details "Cree : $Memory, $Processors CPU"
+    Write-SwitchLog -Action "CUSTOM" -ProfileKey $Key.ToLower() -Details "Cree : $Memory, $Processors CPU"
 }
 
 function Export-Profiles {
@@ -218,10 +206,12 @@ function Export-Profiles {
 function Import-Profiles {
     param([Parameter(Mandatory)][string]$Path)
     if (-not (Test-Path $Path)) { throw "Fichier introuvable : $Path" }
-    try { Get-Content $Path -Raw | ConvertFrom-Json | Out-Null }
-    catch { throw "JSON invalide : $Path - $_" }
+    $imported = try { Get-Content $Path -Raw | ConvertFrom-Json } catch { throw "JSON invalide dans '$Path' : $_" }
+    if ($null -eq $imported.profiles) { throw "Le fichier importe ne contient pas de cle 'profiles'." }
+    if ($null -eq $imported.version)  { throw "Le fichier importe ne contient pas de cle 'version'." }
+    if (@($imported.profiles.PSObject.Properties).Count -eq 0) { throw "Aucun profil defini dans le fichier importe." }
     Backup-WslConfig
     Copy-Item $Path (Get-ProfilesPath) -Force
-    Write-Host "  OK - Profils importes depuis : $Path" -ForegroundColor Green
+    Write-Host "  OK - $(@($imported.profiles.PSObject.Properties).Count) profil(s) importes depuis : $Path" -ForegroundColor Green
     Write-SwitchLog -Action "IMPORT" -Details $Path
 }

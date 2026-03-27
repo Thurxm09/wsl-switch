@@ -44,14 +44,31 @@ jobs:
       - name: Run PSScriptAnalyzer
         shell: pwsh
         run: |
-          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Error
+          # Exclude rules that are deliberately acceptable in this project:
+          # - PSAvoidUsingCmdletAliases: short aliases used intentionally in non-library scripts
+          # - PSUseShouldProcessForStateChangingFunctions: cmdlet convention not required here
+          # - PSAvoidUsingWriteHost: Write-Host is intentional for interactive terminal UI
+          # - PSAvoidGlobalVars: $Global:WSLRoot is the documented cross-module contract
+          # - PSUseApprovedVerbs: Fit-String / Make-BoxLine are internal UI helpers, not exported
+          # - PSUseSingularNouns: Import-Profiles / Export-Profiles handle multiple profiles by design
+          # - PSUseBOMForUnicodeEncodedFile: files are UTF-8 without BOM by project convention
+          $excludeRules = @(
+            'PSAvoidUsingCmdletAliases',
+            'PSUseShouldProcessForStateChangingFunctions',
+            'PSAvoidUsingWriteHost',
+            'PSAvoidGlobalVars',
+            'PSUseApprovedVerbs',
+            'PSUseSingularNouns',
+            'PSUseBOMForUnicodeEncodedFile'
+          )
+          $results = Invoke-ScriptAnalyzer -Path . -Recurse -Severity Warning -ExcludeRule $excludeRules
           if ($results.Count -gt 0) {
             $results | ForEach-Object {
               Write-Host "::error file=$($_.ScriptPath),line=$($_.Line)::[$($_.RuleName)] $($_.Message)"
             }
             exit 1
           }
-          Write-Host "PSScriptAnalyzer: no errors found."
+          Write-Host "PSScriptAnalyzer: no warnings or errors found."
 
       - name: Validate profiles.json
         shell: pwsh

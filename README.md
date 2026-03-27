@@ -163,9 +163,9 @@ Créez un nouveau profil directement depuis la CLI :
 wsl-switch -NewProfile "gaming 12GB 6 Mode gaming haute performance"
 ```
 
-- La clé doit être un mot unique (minuscules recommandées)
+- La clé doit être un mot unique (minuscules recommandées) et doit être un identifiant alphanumérique (lettres, chiffres, `_`, `-`)
 - La RAM doit suivre le format `<nombre>GB` (ex : `4GB`, `8GB`)
-- Le nombre de CPU doit être compris entre 1 et 8
+- Le nombre de CPU doit être compris entre 1 et le nombre de processeurs logiques de la machine hôte
 - La description est optionnelle
 
 Le profil est immédiatement disponible dans le menu interactif et dans la liste des commandes directes.
@@ -175,6 +175,8 @@ Le profil est immédiatement disponible dans le menu interactif et dans la liste
 ## Surveillance RAM
 
 WSL2 Profile Switcher inclut un système de monitoring RAM qui s'exécute en arrière-plan via le Planificateur de tâches Windows, sans nécessiter de terminal ouvert.
+
+> **Note :** Le démarrage et l'arrêt du monitoring requièrent des **droits administrateur** — lancez PowerShell en tant qu'Administrateur pour ces commandes.
 
 ```powershell
 # Démarrer le monitoring

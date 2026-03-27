@@ -14,14 +14,14 @@ function Write-SwitchLog {
         Enregistre un événement dans l'historique JSON.
     .PARAMETER Action
         Type d'action : SWITCH | ROLLBACK | CUSTOM | IMPORT | EXPORT
-    .PARAMETER Profile
+    .PARAMETER ProfileKey
         Clé du profil concerné (ex: "web", "data")
     .PARAMETER Details
         Informations complémentaires libres
     #>
     param(
         [Parameter(Mandatory)][string]$Action,
-        [string]$Profile = "N/A",
+        [string]$ProfileKey = "N/A",
         [string]$Details = ""
     )
 
@@ -30,7 +30,7 @@ function Write-SwitchLog {
     $entry = [PSCustomObject]@{
         timestamp = (Get-Date -Format "yyyy-MM-dd HH:mm:ss")
         action    = $Action
-        profile   = $Profile
+        profile   = $ProfileKey
         details   = $Details
         user      = $env:USERNAME
     }
@@ -118,51 +118,5 @@ function Show-SwitchHistory {
     }
 
     Write-Host "  ──────────────────────────────────────────────────" -ForegroundColor DarkGray
-    Write-Host ""
-}
-
-function Get-WeeklyReport {
-    <#
-    .SYNOPSIS
-        Génère un résumé hebdomadaire des usages par profil.
-        Préparation Phase 3 — les données sont déjà collectées.
-    #>
-    $historyPath = Get-HistoryPath
-    if (-not (Test-Path $historyPath)) {
-        Write-Host "  Aucune donnée pour le rapport." -ForegroundColor Gray
-        return
-    }
-
-    $history = @(Get-Content $historyPath -Raw | ConvertFrom-Json)
-    $weekAgo = (Get-Date).AddDays(-7)
-
-    $weekEntries = $history | Where-Object {
-        $_.action -eq "SWITCH" -and
-        ([datetime]::ParseExact($_.timestamp, "yyyy-MM-dd HH:mm:ss", $null)) -ge $weekAgo
-    }
-
-    if (@($weekEntries).Count -eq 0) {
-        Write-Host ""
-        Write-Host "  Aucun switch cette semaine." -ForegroundColor Gray
-        Write-Host ""
-        return
-    }
-
-    $grouped = $weekEntries | Group-Object -Property profile
-
-    Write-Host ""
-    Write-Host "  Rapport hebdomadaire (7 derniers jours)" -ForegroundColor Cyan
-    Write-Host "  ─────────────────────────────────────────" -ForegroundColor DarkGray
-    foreach ($group in ($grouped | Sort-Object Count -Descending)) {
-        $bar   = "█" * $group.Count
-        $color = switch ($group.Name) {
-            "web"   { "Green" }
-            "data"  { "Yellow" }
-            "base"  { "Cyan" }
-            default { "Gray" }
-        }
-        Write-Host "  $($group.Name.PadRight(14))" -NoNewline -ForegroundColor $color
-        Write-Host "$bar ($($group.Count)x)" -ForegroundColor DarkGray
-    }
     Write-Host ""
 }
