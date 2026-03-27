@@ -6,8 +6,7 @@
 ![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-5391FE?logo=powershell&logoColor=white)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4?logo=windows&logoColor=white)
 ![WSL](https://img.shields.io/badge/WSL-2-orange?logo=linux&logoColor=white)
-![License](https://img.shields.io/badge/License-MIT-green)
-
+![License](https://img.shields.io/badge/License-GPL--v3-green)
 ---
 
 ## Table des matières
