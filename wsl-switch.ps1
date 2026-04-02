@@ -1,4 +1,4 @@
-﻿# ============================================================
+# ============================================================
 #  WSL2 Profile Switcher v2.0 - Thuram Dev Setup
 # ============================================================
 #
@@ -12,7 +12,6 @@
 #  .\wsl-switch.ps1 -NewProfile "perf 8GB 4 Description"
 #  .\wsl-switch.ps1 -Export            -> exporter profils
 #  .\wsl-switch.ps1 -Import path.json  -> importer profils
-#  .\wsl-switch.ps1 -DebugMode         -> mode debug (erreurs visibles)
 #
 # ============================================================
 
@@ -29,28 +28,8 @@ param(
     [string]$Monitor    = "",
     [switch]$Report,
     [switch]$Clean,
-    [switch]$Version,
-    [switch]$DebugMode 
+    [switch]$Version
 )
-
-if ($DebugMode) {
-    $ErrorActionPreference = 'Continue'   # Mode bavard pour debug
-    $VerbosePreference     = 'Continue'
-    Write-Host "  [DEBUG] Mode debug actif — erreurs affichées" -ForegroundColor Magenta
-} else {
-    $ErrorActionPreference = 'Stop'       # Mode prod : silencieux
-}
-
-# ---- Gestion des erreurs -------------------------------------------
-# Doit etre defini avant tout pour capturer les erreurs des modules
-
-if ($DebugMode) {
-    $ErrorActionPreference = 'Continue'
-    $VerbosePreference     = 'Continue'
-    Write-Host "  [DEBUG] Mode debug actif - erreurs affichees" -ForegroundColor Magenta
-} else {
-    $ErrorActionPreference = 'Stop'
-}
 
 # ---- Bootstrap ------------------------------------------------------
 
@@ -132,18 +111,12 @@ function Make-BoxLine {
 }
 
 function Get-RamInfo {
-    try {
-        $os    = Get-CimInstance Win32_OperatingSystem -ErrorAction Stop
-        $total = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
-        $free  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
-        $used  = [math]::Round($total - $free, 1)
-        $pct   = [math]::Round($used / $total * 100, 0)
-        return [PSCustomObject]@{ total = $total; used = $used; pct = $pct }
-    }
-    catch {
-        if ($DebugMode) { Write-Host "  [DEBUG] Get-RamInfo : $_" -ForegroundColor DarkYellow }
-        return [PSCustomObject]@{ total = 0; used = 0; pct = 0 }
-    }
+    $os    = Get-CimInstance Win32_OperatingSystem
+    $total = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
+    $free  = [math]::Round($os.FreePhysicalMemory / 1MB, 1)
+    $used  = [math]::Round($total - $free, 1)
+    $pct   = [math]::Round($used / $total * 100, 0)
+    return [PSCustomObject]@{ total = $total; used = $used; pct = $pct }
 }
 
 function Get-RamBar {
@@ -156,13 +129,12 @@ function Get-RamBar {
 function Show-Header {
     param([string]$ActiveName = "?", [string]$ActiveMem = "?")
 
-    Clear-Host
-    Write-Host ""
-
     $ram      = Get-RamInfo
     $bar      = Get-RamBar -Pct $ram.pct
     $ramColor = if ($ram.pct -ge 80) { "Red" } elseif ($ram.pct -ge 60) { "Yellow" } else { "Green" }
 
+    Clear-Host
+    Write-Host ""
     Write-Host $LINE_TOP -ForegroundColor Cyan
     Write-Host (Make-BoxLine "    " "   WSL2 Profile Switcher  v$($Global:AppVersion)   ") -ForegroundColor Cyan
     Write-Host (Make-BoxLine "    " "   Thuram Dev Setup                    ") -ForegroundColor Cyan

@@ -15,7 +15,7 @@ function Get-ProfileConfig {
     if (-not (Test-Path $path)) {
         throw "profiles.json introuvable. Chemin attendu : $path"
     }
-    $raw = Get-Content $path -Raw -Encoding UTF8 -ErrorAction Stop
+    $raw = Get-Content $path -Raw -Encoding UTF8
     if ([string]::IsNullOrWhiteSpace($raw)) {
         throw "profiles.json est vide. Chemin : $path"
     }
@@ -36,7 +36,7 @@ function Get-ActiveProfile {
     if (-not (Test-Path $wslConfig)) {
         return [PSCustomObject]@{ name = "Non configure"; key = ""; memory = "N/A"; processors = "?" }
     }
-    $lines = Get-Content $wslConfig -Encoding UTF8 -ErrorAction Stop
+    $lines = Get-Content $wslConfig -Encoding UTF8
     $mem   = ($lines | Where-Object { $_ -match "^memory=" }     | Select-Object -First 1) -replace "memory=", ""
     $cpu   = ($lines | Where-Object { $_ -match "^processors=" } | Select-Object -First 1) -replace "processors=", ""
     try {
@@ -147,7 +147,7 @@ function Set-WslProfile {
     Write-Host "  Arret de WSL2..." -ForegroundColor Gray
     wsl --shutdown
     Start-Sleep -Seconds 2
-    [System.IO.File]::WriteAllText((Get-WslConfigPath), $content, [System.Text.UTF8Encoding]::new($false))
+    Set-Content -Path (Get-WslConfigPath) -Value $content -Encoding UTF8
 
     if (-not (Test-WslConfigIntegrity)) {
         Write-Host "  ERREUR : .wslconfig invalide apres ecriture. Rollback automatique." -ForegroundColor Red
