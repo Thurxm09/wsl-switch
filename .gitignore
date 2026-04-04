@@ -14,7 +14,7 @@ Write-WslSwitch.ps1
 Thumbs.db
 Desktop.ini
 .DS_Store
-
+ 
 # VSCode
 .vscode/*.log
 # Ignore les fichiers de configuration de VSCode, à adapter selon les besoins
