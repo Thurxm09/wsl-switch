@@ -23,7 +23,7 @@
     },
     "base": {
       "displayName": "BASE",
-      "description": "Mode minimal - conservation RAM",
+      "description": "Mode minimal",
       "color": "Cyan",
       "memory": "2GB",
       "processors": 2,

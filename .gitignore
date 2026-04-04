@@ -17,4 +17,5 @@ Desktop.ini
 
 # VSCode
 .vscode/*.log
-.vscode/
+# Ignore les fichiers de configuration de VSCode, à adapter selon les besoins
+.vscode/ 
