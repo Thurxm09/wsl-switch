@@ -97,17 +97,17 @@ $MEM_W     = $CONTENT_W - $LABEL_W - $DESC_W   # 7
 
 # ---- Utilitaires display --------------------------------------------
 
-function Fit-String {
+function Format-String {
     param([string]$s, [int]$n)
     if ($s.Length -gt $n) { return $s.Substring(0, $n) }
     return $s.PadRight($n)
 }
 
-function Make-BoxLine {
+function New-BoxLine {
     # Construit une ligne encadree : "  || cursor content ||"
     # Une seule string, un seul Write-Host => alignement garanti
     param([string]$cursor, [string]$content)
-    return "  " + $C_VERT + $cursor + (Fit-String $content $CONTENT_W) + $C_VERT
+    return "  " + $C_VERT + $cursor + (Format-String $content $CONTENT_W) + $C_VERT
 }
 
 function Get-RamInfo {
@@ -136,18 +136,17 @@ function Show-Header {
     Clear-Host
     Write-Host ""
     Write-Host $LINE_TOP -ForegroundColor Cyan
-    Write-Host (Make-BoxLine "    " "   WSL2 Profile Switcher  v$($Global:AppVersion)   ") -ForegroundColor Cyan
-    Write-Host (Make-BoxLine "    " "   Thuram Dev Setup                    ") -ForegroundColor Cyan
+    Write-Host (New-BoxLine "    " "   WSL2 Profile Switcher  v$($Global:AppVersion)   ") -ForegroundColor Cyan
     Write-Host $LINE_MID -ForegroundColor Cyan
 
     # Ligne RAM - construite en une seule string, couleur unique par Write-Host
     $ramStats = " " + $ram.pct + "%  (" + $ram.used + "/" + $ram.total + " GB)"
-    $ramContent = "  RAM  " + $bar + (Fit-String $ramStats ($CONTENT_W - 7 - 10))
-    Write-Host (Make-BoxLine "    " $ramContent) -ForegroundColor $ramColor
+    $ramContent = "  RAM  " + $bar + (Format-String $ramStats ($CONTENT_W - 7 - 10))
+    Write-Host (New-BoxLine "    " $ramContent) -ForegroundColor $ramColor
 
     # Ligne profil actif
     $profileStr = "  Profil actif : " + $ActiveName + " (" + $ActiveMem + ")"
-    Write-Host (Make-BoxLine "    " $profileStr) -ForegroundColor White
+    Write-Host (New-BoxLine "    " $profileStr) -ForegroundColor White
 
     Write-Host $LINE_MID -ForegroundColor Cyan
 }
@@ -207,18 +206,18 @@ function Show-InteractiveMenu {
                 $memRaw  = if ($item.memory)   { "(" + $item.memory + ")" } else { "" }
                 $mark    = if ($item.isActive) { "[v]" } else { "" }
 
-                $label   = Fit-String $item.label         $LABEL_W
-                $desc    = Fit-String $item.description   $DESC_W
-                $mem     = Fit-String ($memRaw + $mark)   $MEM_W
+                $label   = Format-String $item.label         $LABEL_W
+                $desc    = Format-String $item.description   $DESC_W
+                $mem     = Format-String ($memRaw + $mark)   $MEM_W
                 $content = $label + $desc + $mem
 
                 $color = if ($isSelected) { "Yellow" } else { $item.color }
-                Write-Host (Make-BoxLine $cursor $content) -ForegroundColor $color
+                Write-Host (New-BoxLine $cursor $content) -ForegroundColor $color
             }
             else {
-                $content = Fit-String $item.label $CONTENT_W
+                $content = Format-String $item.label $CONTENT_W
                 $color   = if ($isSelected) { "Yellow" } else { $item.color }
-                Write-Host (Make-BoxLine $cursor $content) -ForegroundColor $color
+                Write-Host (New-BoxLine $cursor $content) -ForegroundColor $color
             }
         }
 

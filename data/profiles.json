@@ -5,7 +5,7 @@
       "displayName": "WEB",
       "description": "Brave + VS Code + WSL leger",
       "color": "Green",
-      "memory": "2GB",
+      "memory": "4GB",
       "processors": 3,
       "swap": "3GB",
       "swapFile": "C:/Temp/wsl-swap.vhdx",
@@ -25,9 +25,9 @@
       "displayName": "BASE",
       "description": "Mode minimal - conservation RAM",
       "color": "Cyan",
-      "memory": "1GB",
+      "memory": "2GB",
       "processors": 2,
-      "swap": "1GB",
+      "swap": "2GB",
       "swapFile": "C:/Temp/wsl-swap.vhdx",
       "swappiness": 20
     }
