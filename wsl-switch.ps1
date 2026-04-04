@@ -147,7 +147,7 @@ function Show-Header {
     # Ligne profil actif
     $profileStr = "  Profil actif : " + $ActiveName + " (" + $ActiveMem + ")"
     Write-Host (New-BoxLine "    " $profileStr) -ForegroundColor White
-
+ 
     Write-Host $LINE_MID -ForegroundColor Cyan 
 }
 

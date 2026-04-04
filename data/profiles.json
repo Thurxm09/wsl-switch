@@ -26,7 +26,7 @@
       "description": "Mode minimal",
       "color": "Cyan",
       "memory": "2GB",
-      "processors": 2,
+      "processors": 2, 
       "swap": "2GB",
       "swapFile": "C:/Temp/wsl-swap.vhdx",
       "swappiness": 20
